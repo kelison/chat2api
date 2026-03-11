@@ -148,7 +148,7 @@ export class ProxyServer {
     this.router.get('/', async (ctx) => {
       ctx.body = {
         name: 'Chat2API Proxy',
-        version: '1.0.0',
+        version: '1.1.2',
         description: 'OpenAI API compatible proxy service',
         endpoints: [
           'POST /v1/chat/completions',

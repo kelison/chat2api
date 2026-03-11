@@ -73,10 +73,14 @@ export function createWindow(options: WindowOptions = {}): BrowserWindow {
 
   mainWindow.on('close', (event) => {
     if (!app.isQuitting) {
-      const config = storeManager.getConfig()
-      if (config.minimizeToTray) {
-        event.preventDefault()
-        mainWindow?.hide()
+      try {
+        const config = storeManager.getConfig()
+        if (config.minimizeToTray) {
+          event.preventDefault()
+          mainWindow?.hide()
+        }
+      } catch (error) {
+        console.error('[Window] Failed to get config during close:', error)
       }
     }
   })

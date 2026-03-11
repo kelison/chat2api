@@ -18,7 +18,27 @@ let proxyServer: ProxyServer | null = null
 let proxyStartTime: number | null = null
 
 export async function registerIpcHandlers(mainWindow: BrowserWindow | null): Promise<void> {
-  await storeManager.initialize()
+  try {
+    await storeManager.initialize()
+  } catch (error) {
+    console.error('[IPC] Failed to initialize storage:', error)
+    
+    // Notify renderer about the initialization error
+    mainWindow?.webContents.send(IpcChannels.STORE_INIT_ERROR, {
+      message: error instanceof Error ? error.message : 'Failed to initialize storage',
+    })
+    
+    // Still set mainWindow for potential recovery
+    storeManager.setMainWindow(mainWindow)
+    
+    if (mainWindow) {
+      oauthManager.setMainWindow(mainWindow)
+    }
+    
+    // Register minimal IPC handlers for error recovery
+    registerErrorRecoveryHandlers(mainWindow)
+    return
+  }
   
   storeManager.setMainWindow(mainWindow)
   
@@ -615,4 +635,34 @@ export function setProxyStatus(status: ProxyStatus): void {
   } else if (!status.isRunning) {
     proxyStartTime = null
   }
+}
+
+function registerErrorRecoveryHandlers(mainWindow: BrowserWindow | null): void {
+  ipcMain.handle(IpcChannels.STORE_RETRY_INIT, async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await storeManager.initialize()
+      if (!storeManager.hasInitializationError()) {
+        mainWindow?.webContents.send(IpcChannels.STORE_INIT_ERROR, { message: null })
+        return { success: true }
+      }
+      return { 
+        success: false, 
+        error: storeManager.getInitializationError()?.message || 'Unknown error' 
+      }
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to initialize storage' 
+      }
+    }
+  })
+
+  ipcMain.handle(IpcChannels.APP_GET_VERSION, async (): Promise<string> => {
+    return app.getVersion()
+  })
+
+  ipcMain.handle(IpcChannels.APP_CLOSE, async (): Promise<void> => {
+    app.isQuitting = true
+    mainWindow?.close()
+  })
 }

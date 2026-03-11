@@ -31,7 +31,7 @@ export function DataManagement() {
     setIsExporting(true)
     try {
       const config = {
-        version: '1.0.0',
+        version: '1.1.2',
         exportedAt: new Date().toISOString(),
         settings: localStorage.getItem('chat2api-settings'),
       }

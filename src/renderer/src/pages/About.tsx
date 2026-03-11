@@ -23,7 +23,7 @@ interface UpdateInfo {
 
 export function About() {
   const { t } = useTranslation()
-  const [appVersion, setAppVersion] = useState<string>('1.0.0')
+  const [appVersion, setAppVersion] = useState<string>('1.1.2')
 
   useEffect(() => {
     if (window.electronAPI?.app?.getVersion) {

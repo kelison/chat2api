@@ -45,9 +45,24 @@ class StoreManager {
   private store: StoreType | null = null
   private isInitialized: boolean = false
   private mainWindow: BrowserWindow | null = null
+  private initializationError: Error | null = null
 
   setMainWindow(window: BrowserWindow | null): void {
     this.mainWindow = window
+  }
+
+  /**
+   * Check if storage has initialization error
+   */
+  hasInitializationError(): boolean {
+    return this.initializationError !== null
+  }
+
+  /**
+   * Get initialization error
+   */
+  getInitializationError(): Error | null {
+    return this.initializationError
   }
 
   /**
@@ -67,15 +82,61 @@ class StoreManager {
 
     const storagePath = this.getStoragePath()
 
-    this.store = new Store({
-      name: 'data',
-      cwd: storagePath,
-      defaults: this.getDefaultData(),
-      encryptionKey: this.getEncryptionKey(),
-    })
+    try {
+      this.store = new Store({
+        name: 'data',
+        cwd: storagePath,
+        defaults: this.getDefaultData(),
+        encryptionKey: this.getEncryptionKey(),
+      })
 
-    await this.initializeDefaultProviders()
-    this.isInitialized = true
+      await this.initializeDefaultProviders()
+      this.isInitialized = true
+      this.initializationError = null
+    } catch (error) {
+      console.error('[Store] Failed to initialize storage:', error)
+      this.initializationError = error instanceof Error ? error : new Error(String(error))
+      
+      // Try to recover by backing up corrupted data and reinitializing
+      try {
+        await this.recoverFromCorruptedData(storagePath)
+        this.store = new Store({
+          name: 'data',
+          cwd: storagePath,
+          defaults: this.getDefaultData(),
+          encryptionKey: this.getEncryptionKey(),
+        })
+        this.isInitialized = true
+        this.initializationError = null
+        console.log('[Store] Successfully recovered from corrupted data')
+      } catch (recoveryError) {
+        console.error('[Store] Failed to recover from corrupted data:', recoveryError)
+        throw this.initializationError
+      }
+    }
+  }
+
+  /**
+   * Recover from corrupted data file
+   * Backup the corrupted file and create a new one
+   */
+  private async recoverFromCorruptedData(storagePath: string): Promise<void> {
+    const { renameSync, existsSync } = await import('fs')
+    const { join } = await import('path')
+    
+    const dataPath = join(storagePath, 'data.json')
+    const backupPath = join(storagePath, `data.corrupted.${Date.now()}.json`)
+    
+    if (existsSync(dataPath)) {
+      console.log('[Store] Backing up corrupted data file to:', backupPath)
+      try {
+        renameSync(dataPath, backupPath)
+        console.log('[Store] Corrupted data file backed up successfully')
+      } catch (backupError) {
+        console.error('[Store] Failed to backup corrupted data:', backupError)
+        throw backupError
+      }
+    }
   }
 
   /**
@@ -198,7 +259,10 @@ class StoreManager {
    */
   private ensureInitialized(): void {
     if (!this.isInitialized || !this.store) {
-      throw new Error('Storage not initialized, please call initialize() first')
+      const errorMsg = this.initializationError 
+        ? `Storage initialization failed: ${this.initializationError.message}`
+        : 'Storage not initialized, please call initialize() first'
+      throw new Error(errorMsg)
     }
   }
 

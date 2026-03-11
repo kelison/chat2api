@@ -14,6 +14,8 @@ export const IpcChannels = {
   STORE_SET: 'store:set',
   STORE_DELETE: 'store:delete',
   STORE_CLEAR_ALL: 'store:clearAll',
+  STORE_INIT_ERROR: 'store:initError',
+  STORE_RETRY_INIT: 'store:retryInit',
 
   PROVIDERS_GET_ALL: 'providers:getAll',
   PROVIDERS_GET_BUILTIN: 'providers:getBuiltin',

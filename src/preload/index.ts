@@ -45,6 +45,15 @@ const storeAPI = {
   
   clearAll: (): Promise<void> => 
     ipcRenderer.invoke(IpcChannels.STORE_CLEAR_ALL),
+  
+  onInitError: (callback: (error: { message: string | null }) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, error: { message: string | null }) => callback(error)
+    ipcRenderer.on(IpcChannels.STORE_INIT_ERROR, handler)
+    return () => ipcRenderer.removeListener(IpcChannels.STORE_INIT_ERROR, handler)
+  },
+  
+  retryInit: (): Promise<{ success: boolean; error?: string }> => 
+    ipcRenderer.invoke(IpcChannels.STORE_RETRY_INIT),
 }
 
 const providersAPI = {
