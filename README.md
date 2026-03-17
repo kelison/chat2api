@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  Chat2API is a native desktop application that provides an <strong>OpenAI-compatible API</strong> for multiple AI service providers. It allows you to use any OpenAI-compatible client with DeepSeek, GLM, Kimi, MiniMax, Qwen, Z.ai and more across <strong>macOS</strong>, <strong>Windows</strong>, and <strong>Linux</strong>.
+  Chat2API enables zero-cost access to leading AI models by leveraging official web UIs. It supports providers such as DeepSeek, GLM, Kimi, MiniMax, Qwen, and Z.ai, and seamlessly integrates with tools like openlcaw, Cline, and Roo-Code — making any OpenAI-compatible client work out of the box.
 </p>
 
 ## ✨ Features

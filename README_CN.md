@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  Chat2API 是一款原生桌面应用，提供 <strong>OpenAI 兼容 API</strong> 接口，支持多个 AI 服务提供商。让你可以在 <strong>macOS</strong>、<strong>Windows</strong> 和 <strong>Linux</strong> 上使用任何 OpenAI 兼容客户端连接 DeepSeek、GLM、Kimi、MiniMax、Qwen、Z.ai 等服务。
+  Chat2API 通过驱动各大模型的官方 Web UI，实现 0 成本接入主流 AI 大模型。支持 DeepSeek、GLM、Kimi、MiniMax、Qwen、Z.ai 等渠道，可无缝连接 openlcaw、Cline、Roo-Code 等工具，让任何 OpenAI 兼容客户端即刻可用。
 </p>
 
 ## ✨ 功能特性
