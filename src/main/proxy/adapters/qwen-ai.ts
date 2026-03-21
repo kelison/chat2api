@@ -581,8 +581,6 @@ export class QwenAiStreamHandler {
   }
 
   async handleNonStream(stream: any): Promise<any> {
-    console.log('[QwenAI] Starting non-stream handler...')
-
     return new Promise((resolve, reject) => {
       const data = {
         id: '',
@@ -636,21 +634,23 @@ export class QwenAiStreamHandler {
 
               if (phase === 'think' && status !== 'finished') {
                 reasoningText += content
-              } else if (phase === 'answer' && status !== 'finished') {
+              } else if (phase === 'answer') {
+                if (content) {
+                  data.choices[0].message.content += content
+                }
+                if (status === 'finished') {
+                  if (reasoningText) {
+                    data.choices[0].message.reasoning_content = reasoningText
+                  }
+
+                  if (this.onEnd && this.chatId) {
+                    this.onEnd(this.chatId)
+                  }
+
+                  resolveOnce(data)
+                }
+              } else if (phase === null && content) {
                 data.choices[0].message.content += content
-              }
-
-              if (status === 'finished') {
-                if (reasoningText) {
-                  data.choices[0].message.reasoning_content = reasoningText
-                }
-                console.log('[QwenAI] Non-stream finished, content length:', data.choices[0].message.content.length)
-
-                if (this.onEnd && this.chatId) {
-                  this.onEnd(this.chatId)
-                }
-
-                resolveOnce(data)
               }
             }
           } catch (err) {
@@ -666,7 +666,6 @@ export class QwenAiStreamHandler {
         rejectOnce(err)
       })
       stream.once('close', () => {
-        console.log('[QwenAI] Non-stream closed, content length:', data.choices[0].message.content.length)
         if (reasoningText) {
           data.choices[0].message.reasoning_content = reasoningText
         }
