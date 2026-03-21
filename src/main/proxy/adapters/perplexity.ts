@@ -112,7 +112,7 @@ function extractQuery(messages: PerplexityMessage[]): string {
 
 function mapModel(model: string): string {
   const directMappings: Record<string, string> = {
-    'Auto': 'auto',
+    'Auto': 'turbo',
     'Turbo': 'turbo',
     'PPLX-Pro': 'pplx_pro',
     'GPT-5': 'gpt5',
