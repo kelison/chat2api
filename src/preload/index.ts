@@ -142,6 +142,9 @@ const accountsAPI = {
     remainingCredits: number
   } | null> =>
     ipcRenderer.invoke(IpcChannels.ACCOUNTS_GET_CREDITS, accountId),
+
+  clearChats: (accountId: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke(IpcChannels.ACCOUNTS_CLEAR_CHATS, accountId),
 }
 
 type ProviderType = ProviderVendor

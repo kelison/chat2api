@@ -127,7 +127,9 @@ interface AccountsAPI {
     totalCredits: number
     usedCredits: number
     remainingCredits: number
+    expiresAt?: number // Credit reset timestamp (milliseconds)
   } | null>
+  clearChats: (accountId: string) => Promise<{ success: boolean; error?: string }>
 }
 
 interface OAuthAPI {

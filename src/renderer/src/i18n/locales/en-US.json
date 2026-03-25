@@ -188,6 +188,12 @@
     "validationSuccess": "Validation Successful",
     "quota": "Quota",
     "validateCredentials": "Validate Credentials",
+    "clearChats": "Clear Chat History",
+    "clearChatsConfirm": "Are you sure you want to clear all chat history for this account?",
+    "clearChatsWarning": "This will delete all conversation history on this provider's website and cannot be undone.",
+    "clearChatsSuccess": "Chat history cleared successfully",
+    "clearChatsFailed": "Failed to clear chat history",
+    "clearChatsOnlyForQwenAI": "This feature is only available for Qwen AI provider",
     "saving": "Saving...",
     "saveChanges": "Save Changes",
     "required": "Required",
@@ -269,7 +275,8 @@
     "usedCredits": "Used Credits",
     "remainingCredits": "Remaining Credits",
     "getCredits": "Get Credits",
-    "creditsInfo": "Credits Info"
+    "creditsInfo": "Credits Info",
+    "creditResetsAt": "Credit resets at"
   },
   "qwen": {
     "name": "Qwen",

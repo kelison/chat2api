@@ -188,6 +188,12 @@
     "validationSuccess": "验证成功",
     "quota": "配额",
     "validateCredentials": "验证凭证",
+    "clearChats": "清除对话记录",
+    "clearChatsConfirm": "确定要清除该账户的所有对话记录吗？",
+    "clearChatsWarning": "此操作将删除该供应商网站上的所有对话历史，且无法恢复。",
+    "clearChatsSuccess": "对话记录已清除",
+    "clearChatsFailed": "清除对话记录失败",
+    "clearChatsOnlyForQwenAI": "此功能仅支持 Qwen AI 供应商",
     "saving": "保存中...",
     "saveChanges": "保存更改",
     "required": "必填",
@@ -269,7 +275,8 @@
     "usedCredits": "已用积分",
     "remainingCredits": "剩余积分",
     "getCredits": "查询积分",
-    "creditsInfo": "积分信息"
+    "creditsInfo": "积分信息",
+    "creditResetsAt": "积分重置时间"
   },
   "qwen": {
     "name": "Qwen",
