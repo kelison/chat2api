@@ -9,7 +9,6 @@ import { PassThrough } from 'stream'
 import { createParser } from 'eventsource-parser'
 import { Account, Provider } from '../../store/types'
 import { hasToolUse, parseToolUse, ToolCall } from '../promptToolUse'
-import { sessionManager } from '../sessionManager'
 
 const QWEN_AI_BASE = 'https://chat.qwen.ai'
 
@@ -273,27 +272,10 @@ export class QwenAiAdapter {
 
     // Use session context passed from forwarder (avoid duplicate getOrCreateSession calls)
     const sessionContext = request.sessionContext
-    const isMultiTurnEnabled = sessionManager.isMultiTurnEnabled()
-    const isMultiTurn = isMultiTurnEnabled && sessionContext && !sessionContext.isNew
     
-    console.log('[QwenAI] Session info:', {
-      isMultiTurnEnabled,
-      sessionContextIsNew: sessionContext?.isNew,
-      isMultiTurn,
-      providerSessionId: sessionContext?.providerSessionId,
-      parentMessageId: sessionContext?.parentMessageId,
-    })
-    
-    // Reuse existing chat or create new one
-    let chatId = sessionContext?.providerSessionId || ''
-    const parentId = sessionContext?.parentMessageId || null
-    
-    if (isMultiTurn && chatId) {
-      console.log('[QwenAI] Reusing existing chat:', chatId, 'parentId:', parentId)
-    } else {
-      chatId = await this.createChat(modelId, 'OpenAI_API_Chat')
-      console.log('[QwenAI] Created new chat:', chatId)
-    }
+    // Always create a new chat (single-turn mode only)
+    const chatId = await this.createChat(modelId, 'OpenAI_API_Chat')
+    console.log('[QwenAI] Created new chat:', chatId)
 
     const messages = request.messages
     
@@ -301,23 +283,12 @@ export class QwenAiAdapter {
     let systemContent = ''
     let userContent = ''
     
-    // For multi-turn mode, only use the last user message
-    if (request.isMultiTurn && chatId) {
-      // Find last user message
-      for (let i = messages.length - 1; i >= 0; i--) {
-        if (messages[i].role === 'user') {
-          userContent = messages[i].content
-          break
-        }
-      }
-    } else {
-      // Single-turn mode: extract all messages
-      for (const msg of messages) {
-        if (msg.role === 'system') {
-          systemContent += (systemContent ? '\n\n' : '') + msg.content
-        } else if (msg.role === 'user') {
-          userContent = msg.content
-        }
+    // Single-turn mode: extract all messages
+    for (const msg of messages) {
+      if (msg.role === 'system') {
+        systemContent += (systemContent ? '\n\n' : '') + msg.content
+      } else if (msg.role === 'user') {
+        userContent = msg.content
       }
     }
     
@@ -359,11 +330,11 @@ export class QwenAiAdapter {
       chat_id: chatId,
       chat_mode: 'normal',
       model: modelId,
-      parent_id: parentId || null,
+      parent_id: null,
       messages: [
         {
           fid,
-          parentId: parentId || null,
+          parentId: null,
           childrenIds: [childId],
           role: 'user',
           content: userContent,
@@ -375,7 +346,7 @@ export class QwenAiAdapter {
           feature_config: featureConfig,
           extra: { meta: { subChatType: 't2t' } },
           sub_chat_type: 't2t',
-          parent_id: parentId || null,
+          parent_id: null,
         },
       ],
       timestamp: ts + 1,

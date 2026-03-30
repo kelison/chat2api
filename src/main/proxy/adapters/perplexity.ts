@@ -83,31 +83,35 @@ function extractQuery(messages: PerplexityMessage[]): string {
     }
   }
 
-  // Then, extract the last user message
-  let userQuery = ''
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === 'user') {
-      const content = messages[i].content
-      if (typeof content === 'string') {
-        userQuery = content
-      } else if (Array.isArray(content)) {
-        const texts = content
-          .filter((item: any) => item.type === 'text')
-          .map((item: any) => item.text)
-        userQuery = texts.join('\n')
-      }
-      break
+  // Build conversation history from all non-system messages
+  const conversationParts: string[] = []
+  for (const msg of messages) {
+    if (msg.role === 'system') continue
+    
+    let content = ''
+    if (typeof msg.content === 'string') {
+      content = msg.content
+    } else if (Array.isArray(msg.content)) {
+      const texts = msg.content
+        .filter((item: any) => item.type === 'text')
+        .map((item: any) => item.text)
+      content = texts.join('\n')
+    }
+    
+    if (content) {
+      const roleLabel = msg.role === 'user' ? 'User' : 'Assistant'
+      conversationParts.push(`[${roleLabel}]: ${content}`)
     }
   }
 
-  // Combine system prompt and user query
-  // Perplexity doesn't have a separate system prompt field,
-  // so we prepend it to the user query
-  if (systemPrompt && userQuery) {
-    return `${systemPrompt}\n\n${userQuery}`
+  const conversationHistory = conversationParts.join('\n\n')
+
+  // Combine system prompt and conversation history
+  if (systemPrompt && conversationHistory) {
+    return `${systemPrompt}\n\n---\n\n${conversationHistory}`
   }
   
-  return userQuery || systemPrompt
+  return conversationHistory || systemPrompt
 }
 
 function mapModel(model: string): string {

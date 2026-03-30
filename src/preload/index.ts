@@ -439,7 +439,7 @@ const promptsAPI = {
 }
 
 interface SessionConfig {
-  mode: 'single' | 'multi'
+  mode: 'single'
   sessionTimeout: number
   maxMessagesPerSession: number
   deleteAfterTimeout: boolean
@@ -498,6 +498,26 @@ interface ManagementApiConfig {
   managementApiPort?: number
 }
 
+interface ContextManagementConfig {
+  enabled: boolean
+  strategies: {
+    slidingWindow: {
+      enabled: boolean
+      maxMessages: number
+    }
+    tokenLimit: {
+      enabled: boolean
+      maxTokens: number
+    }
+    summary: {
+      enabled: boolean
+      keepRecentMessages: number
+      summaryPrompt?: string
+    }
+  }
+  executionOrder: ('slidingWindow' | 'tokenLimit' | 'summary')[]
+}
+
 const managementApiAPI = {
   getConfig: (): Promise<ManagementApiConfig> => 
     ipcRenderer.invoke(IpcChannels.MANAGEMENT_API_GET_CONFIG),
@@ -507,6 +527,14 @@ const managementApiAPI = {
   
   generateSecret: (): Promise<string> => 
     ipcRenderer.invoke(IpcChannels.MANAGEMENT_API_GENERATE_SECRET),
+}
+
+const contextManagementAPI = {
+  getConfig: (): Promise<ContextManagementConfig> => 
+    ipcRenderer.invoke(IpcChannels.CONTEXT_MANAGEMENT_GET_CONFIG),
+  
+  updateConfig: (updates: Partial<ContextManagementConfig>): Promise<ContextManagementConfig> => 
+    ipcRenderer.invoke(IpcChannels.CONTEXT_MANAGEMENT_UPDATE_CONFIG, updates),
 }
 
 const trayAPI = {
@@ -534,6 +562,7 @@ const electronAPI = {
   prompts: promptsAPI,
   session: sessionAPI,
   managementApi: managementApiAPI,
+  contextManagement: contextManagementAPI,
   tray: trayAPI,
   
   on: (channel: string, callback: (...args: unknown[]) => void) => {

@@ -6,7 +6,7 @@ import { ProviderManager } from '../store/providers'
 import { AccountManager } from '../store/accounts'
 import { ProviderChecker } from '../providers/checker'
 import { CustomProviderManager } from '../providers/custom'
-import { getBuiltinProviders } from '../providers/builtin'
+import { getBuiltinProviders, getBuiltinProvider } from '../providers/builtin'
 import { oauthManager } from '../oauth/manager'
 import { ProxyServer } from '../proxy/server'
 import { proxyStatusManager } from '../proxy/status'
@@ -327,7 +327,29 @@ export async function registerIpcHandlers(mainWindow: BrowserWindow | null): Pro
   })
 
   ipcMain.handle(IpcChannels.ACCOUNTS_VALIDATE_TOKEN, async (_, providerId: string, credentials: Record<string, string>) => {
-    const provider = ProviderManager.getById(providerId)
+    let provider = ProviderManager.getById(providerId)
+    
+    // If provider not in store, check builtin providers
+    if (!provider) {
+      const builtinConfig = getBuiltinProvider(providerId)
+      if (builtinConfig) {
+        provider = {
+          id: builtinConfig.id,
+          name: builtinConfig.name,
+          type: 'builtin',
+          authType: builtinConfig.authType,
+          apiEndpoint: builtinConfig.apiEndpoint,
+          headers: builtinConfig.headers,
+          enabled: true,
+          description: builtinConfig.description,
+          supportedModels: builtinConfig.supportedModels || [],
+          modelMappings: builtinConfig.modelMappings || {},
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        }
+      }
+    }
+    
     if (!provider) {
       return { valid: false, error: 'Provider not found' }
     }
@@ -386,7 +408,7 @@ export async function registerIpcHandlers(mainWindow: BrowserWindow | null): Pro
         return { success: false, error: 'Provider not found' }
       }
 
-      // Support qwen-ai and minimax providers
+      // Support qwen-ai, minimax, and zai providers
       if (provider.id === 'qwen-ai') {
         const { QwenAiAdapter } = await import('../proxy/adapters/qwen-ai')
         const adapter = new QwenAiAdapter(provider, account)
@@ -395,6 +417,11 @@ export async function registerIpcHandlers(mainWindow: BrowserWindow | null): Pro
       } else if (provider.id === 'minimax') {
         const { MiniMaxAdapter } = await import('../proxy/adapters/minimax')
         const adapter = new MiniMaxAdapter(provider, account)
+        const success = await adapter.deleteAllChats()
+        return { success }
+      } else if (provider.id === 'zai') {
+        const { ZaiAdapter } = await import('../proxy/adapters/zai')
+        const adapter = new ZaiAdapter(provider, account)
         const success = await adapter.deleteAllChats()
         return { success }
       } else {
@@ -720,6 +747,47 @@ export async function registerIpcHandlers(mainWindow: BrowserWindow | null): Pro
     ConfigManager.update({ managementApi: newManagementConfig })
     
     return newSecret
+  })
+
+  // ==================== Context Management Handlers ====================
+
+  ipcMain.handle(IpcChannels.CONTEXT_MANAGEMENT_GET_CONFIG, async () => {
+    const config = ConfigManager.get()
+    return config.contextManagement || {
+      enabled: true,
+      strategies: {
+        slidingWindow: { enabled: true, maxMessages: 20 },
+        tokenLimit: { enabled: false, maxTokens: 4000 },
+        summary: { enabled: false, keepRecentMessages: 20 },
+      },
+      executionOrder: ['slidingWindow', 'tokenLimit', 'summary'],
+    }
+  })
+
+  ipcMain.handle(IpcChannels.CONTEXT_MANAGEMENT_UPDATE_CONFIG, async (_, updates: Partial<any>) => {
+    const config = ConfigManager.get()
+    const defaultContextConfig = {
+      enabled: true,
+      strategies: {
+        slidingWindow: { enabled: true, maxMessages: 20 },
+        tokenLimit: { enabled: false, maxTokens: 4000 },
+        summary: { enabled: false, keepRecentMessages: 20 },
+      },
+      executionOrder: ['slidingWindow', 'tokenLimit', 'summary'],
+    }
+    const currentContextConfig = config.contextManagement || defaultContextConfig
+    const newContextConfig = {
+      ...currentContextConfig,
+      ...updates,
+      strategies: {
+        ...currentContextConfig.strategies,
+        ...(updates.strategies || {}),
+      },
+    }
+    
+    ConfigManager.update({ contextManagement: newContextConfig })
+    
+    return newContextConfig
   })
   
   oauthManager.on('progress', (event) => {

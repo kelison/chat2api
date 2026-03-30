@@ -289,8 +289,8 @@ export function AccountList({
                             <Edit className="mr-2 h-4 w-4" />
                             {t('providers.editAccount')}
                           </DropdownMenuItem>
-                          {/* Show Clear Chats for qwen-ai and minimax providers */}
-                          {(providerId === 'qwen-ai' || providerId === 'minimax') && (
+                          {/* Show Clear Chats for qwen-ai, minimax, and zai providers */}
+                          {(providerId === 'qwen-ai' || providerId === 'minimax' || providerId === 'zai') && (
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 

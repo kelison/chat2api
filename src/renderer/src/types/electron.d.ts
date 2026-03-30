@@ -231,7 +231,7 @@ interface PromptsAPI {
 }
 
 interface SessionConfig {
-  mode: 'single' | 'multi'
+  mode: 'single'
   sessionTimeout: number
   maxMessagesPerSession: number
   deleteAfterTimeout: boolean

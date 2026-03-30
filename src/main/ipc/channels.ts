@@ -102,6 +102,9 @@ export const IpcChannels = {
   MANAGEMENT_API_GET_CONFIG: 'managementApi:getConfig',
   MANAGEMENT_API_UPDATE_CONFIG: 'managementApi:updateConfig',
   MANAGEMENT_API_GENERATE_SECRET: 'managementApi:generateSecret',
+
+  CONTEXT_MANAGEMENT_GET_CONFIG: 'contextManagement:getConfig',
+  CONTEXT_MANAGEMENT_UPDATE_CONFIG: 'contextManagement:updateConfig',
 } as const
 
 export type IpcChannel = (typeof IpcChannels)[keyof typeof IpcChannels]

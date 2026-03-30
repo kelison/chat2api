@@ -39,6 +39,46 @@ const FAKE_HEADERS = {
   'X-FE-Version': X_FE_VERSION,
 }
 
+const SEARCH_CITATION_PATTERN = '【turn\\d+search\\d+】'
+const SEARCH_CITATION_PARTIAL_START_PATTERN = '【turn\\d+search\\d+$'
+const SEARCH_CITATION_PARTIAL_END_PATTERN = '^】'
+const SEARCH_CITATION_LOOSE_PATTERN = '【[^】]*turn\\d+search\\d+[^】]*】'
+const SEARCH_CITATION_BRACKET_START = '【'
+const SEARCH_CITATION_BRACKET_END = '】'
+
+function cleanSearchCitations(text: string): string {
+  return text.replace(new RegExp(SEARCH_CITATION_PATTERN, 'g'), '')
+}
+
+function cleanSearchCitationsWithBuffer(text: string, buffer: { value: string }): string {
+  const combined = buffer.value + text
+  
+  // First try to match complete citations
+  let cleaned = combined.replace(new RegExp(SEARCH_CITATION_LOOSE_PATTERN, 'g'), '')
+  
+  // Check if there's an opening bracket at the end that might start a citation
+  const lastOpenBracket = cleaned.lastIndexOf(SEARCH_CITATION_BRACKET_START)
+  if (lastOpenBracket !== -1) {
+    const afterBracket = cleaned.slice(lastOpenBracket)
+    // Check if it looks like a citation pattern
+    if (afterBracket.includes('turn') || afterBracket.includes('search')) {
+      // Keep the partial citation in buffer
+      buffer.value = afterBracket
+      cleaned = cleaned.slice(0, lastOpenBracket)
+    } else if (!afterBracket.includes(SEARCH_CITATION_BRACKET_END)) {
+      // Opening bracket without closing, might be a citation
+      buffer.value = afterBracket
+      cleaned = cleaned.slice(0, lastOpenBracket)
+    } else {
+      buffer.value = ''
+    }
+  } else {
+    buffer.value = ''
+  }
+  
+  return cleaned
+}
+
 interface ZaiMessage {
   role: 'user' | 'assistant' | 'system'
   content: string | any[]
@@ -263,6 +303,40 @@ export class ZaiAdapter {
     }
   }
 
+  async deleteAllChats(): Promise<boolean> {
+    try {
+      const token = await this.ensureToken()
+      
+      console.log('[Z.ai] Deleting all chats...')
+      
+      const response = await axios.delete(
+        `${ZAI_API_BASE}/api/v1/chats/`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            ...FAKE_HEADERS,
+            Referer: `${ZAI_API_BASE}/`,
+          },
+          timeout: 30000,
+          validateStatus: () => true,
+        }
+      )
+
+      console.log('[Z.ai] Delete all chats response:', response.status, response.data)
+      
+      if (response.status === 200 && response.data === true) {
+        console.log('[Z.ai] All chats deleted successfully')
+        return true
+      }
+      
+      console.warn('[Z.ai] Delete all chats failed:', response.status, response.data)
+      return false
+    } catch (error) {
+      console.error('[Z.ai] Failed to delete all chats:', error)
+      return false
+    }
+  }
+
   async chatCompletion(request: ChatCompletionRequest): Promise<{ response: AxiosResponse; chatId: string; requestId: string }> {
     const token = await this.ensureToken()
     const userId = this.extractUserIDFromToken(token)
@@ -270,17 +344,27 @@ export class ZaiAdapter {
     console.log('[Z.ai] chatCompletion called with request.model:', request.model)
     console.log('[Z.ai] sessionContext:', request.sessionContext)
     
+    // Z.ai API requires specific model name casing:
+    // - GLM-5-Turbo: uppercase (only this one needs uppercase)
+    // - glm-5, glm-4.7, glm-4.6v, glm-4.5v, glm-4.5-air: lowercase
     const modelMapping: Record<string, string> = {
-      'GLM-5': 'glm-5',
-      'GLM-4.7': 'glm-4.7',
-      'GLM-4.6V': 'glm-4.6v',
-      'GLM-4.6': 'glm-4.6',
+      'glm-5-turbo': 'GLM-5-Turbo',  // Only GLM-5-Turbo needs uppercase
       'glm-5': 'glm-5',
       'glm-4.7': 'glm-4.7',
       'glm-4.6v': 'glm-4.6v',
-      'glm-4.6': 'glm-4.6',
+      'glm-4.6': 'glm-4.6v',
+      'glm-4.5v': 'glm-4.5v',
+      'glm-4.5-air': 'glm-4.5-air',
+      // Also handle uppercase input
+      'GLM-5-Turbo': 'GLM-5-Turbo',
+      'GLM-5': 'glm-5',
+      'GLM-4.7': 'glm-4.7',
+      'GLM-4.6V': 'glm-4.6v',
+      'GLM-4.6': 'glm-4.6v',
+      'GLM-4.5V': 'glm-4.5v',
+      'GLM-4.5-Air': 'glm-4.5-air',
     }
-    const mappedModel = modelMapping[request.model] || request.model
+    const mappedModel = modelMapping[request.model] || modelMapping[request.model.toLowerCase()] || request.model
     
     console.log('[Z.ai] Original model:', request.model, '-> Mapped model:', mappedModel)
     
@@ -329,7 +413,13 @@ export class ZaiAdapter {
       console.log('[Z.ai] Reusing existing chat:', chatId, 'parentMessageId:', parentMessageId)
       messageId = uuid()
       // For multi-turn, only send the last user message
-      const lastUserIdx = processedMessages.findLastIndex((m: any) => m.role === 'user')
+      let lastUserIdx = -1
+      for (let i = processedMessages.length - 1; i >= 0; i--) {
+        if (processedMessages[i].role === 'user') {
+          lastUserIdx = i
+          break
+        }
+      }
       if (lastUserIdx !== -1) {
         processedMessages = [processedMessages[lastUserIdx]]
       }
@@ -364,12 +454,17 @@ export class ZaiAdapter {
       console.log('[Z.ai] Web search enabled (from model name)')
     }
 
+    // Z.ai API uses auto_web_search for web search feature
+    // web_search should always be false, use auto_web_search instead
     const features = {
       image_generation: false,
-      web_search: enableWebSearch,
-      auto_web_search: false,
+      web_search: false,
+      auto_web_search: enableWebSearch,
       preview_mode: true,
       flags: [],
+      vlm_tools_enable: false,
+      vlm_web_search_enable: false,
+      vlm_website_mode: false,
       enable_thinking: enableThinking,
     }
 
@@ -518,6 +613,8 @@ export class ZaiStreamHandler {
   private sentRole: boolean = false
   private sentThinkingRole: boolean = false
   private streamEnded: boolean = false
+  private citationBuffer: { value: string } = { value: '' }
+  private thinkingCitationBuffer: { value: string } = { value: '' }
 
   constructor(model: string, onEnd?: (chatId: string) => void) {
     this.model = model
@@ -627,6 +724,8 @@ export class ZaiStreamHandler {
           }
 
           if (result.phase === 'thinking' && result.delta_content) {
+            const cleanedContent = cleanSearchCitationsWithBuffer(result.delta_content, this.thinkingCitationBuffer)
+            if (!cleanedContent) return
             // Output thinking content as reasoning_content
             if (!this.sentThinkingRole) {
               transStream.write(
@@ -645,17 +744,19 @@ export class ZaiStreamHandler {
                 id: this.chatId,
                 model: this.model,
                 object: 'chat.completion.chunk',
-                choices: [{ index: 0, delta: { reasoning_content: result.delta_content }, finish_reason: null }],
+                choices: [{ index: 0, delta: { reasoning_content: cleanedContent }, finish_reason: null }],
                 created: this.created,
               })}\n\n`
             )
           } else if (result.phase === 'answer' && result.delta_content) {
-            this.content += result.delta_content
+            const cleanedContent = cleanSearchCitationsWithBuffer(result.delta_content, this.citationBuffer)
+            if (!cleanedContent) return
+            this.content += cleanedContent
             
             // Process tool call interception
             const baseChunk = createBaseChunk(this.chatId, this.model, this.created)
             const { chunks: outputChunks } = processStreamContent(
-              result.delta_content, 
+              cleanedContent, 
               this.toolCallState, 
               baseChunk, 
               !this.sentRole && !this.sentThinkingRole,
@@ -789,7 +890,9 @@ export class ZaiStreamHandler {
       console.log('[Z.ai] Non-stream: streamData is function?', typeof streamData?.on === 'function')
       if (streamData && typeof streamData.on === 'function') {
         console.log('[Z.ai] Non-stream: taking stream path')
-        // Stream response
+        // Stream response - use buffers for citation cleaning
+        const thinkingBuffer = { value: '' }
+        const answerBuffer = { value: '' }
         const parser = createParser({
           onEvent: (event: any) => {
             try {
@@ -803,9 +906,9 @@ export class ZaiStreamHandler {
               if (!result) return
 
               if (result.phase === 'thinking' && result.delta_content) {
-                reasoningContent += result.delta_content
+                reasoningContent += cleanSearchCitationsWithBuffer(result.delta_content, thinkingBuffer)
               } else if (result.phase === 'answer' && result.delta_content) {
-                data.choices[0].message.content += result.delta_content
+                data.choices[0].message.content += cleanSearchCitationsWithBuffer(result.delta_content, answerBuffer)
               } else if (result.phase === 'done' && result.done) {
                 console.log('[Z.ai] Non-stream finished, content length:', data.choices[0].message.content.length)
                 if (result.usage) {
@@ -837,6 +940,8 @@ export class ZaiStreamHandler {
           if (typeof streamData === 'string') {
             let content = ''
             let reasoning = ''
+            const thinkingBuffer = { value: '' }
+            const answerBuffer = { value: '' }
             const lines = streamData.split('\n')
             for (const line of lines) {
               if (line.startsWith('data:')) {
@@ -846,9 +951,9 @@ export class ZaiStreamHandler {
                   const event = JSON.parse(jsonStr)
                   if (event.type === 'chat:completion' && event.data) {
                     if (event.data.phase === 'thinking' && event.data.delta_content) {
-                      reasoning += event.data.delta_content
+                      reasoning += cleanSearchCitationsWithBuffer(event.data.delta_content, thinkingBuffer)
                     } else if (event.data.phase === 'answer' && event.data.delta_content) {
-                      content += event.data.delta_content
+                      content += cleanSearchCitationsWithBuffer(event.data.delta_content, answerBuffer)
                     } else if (event.data.phase === 'done' && event.data.done) {
                       if (event.data.usage) {
                         data.usage = event.data.usage
