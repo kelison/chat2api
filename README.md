@@ -32,7 +32,7 @@
 
 - OpenAI Compatible API: Provides standard OpenAI-compatible API endpoints for seamless integration
 - Multi-Provider Support: Connect DeepSeek, GLM, Kimi, MiniMax, Perplexity 🆕, Qwen, Z.ai and more
-- 🆕 Multi-turn Conversation: Full support for multi-turn dialogue with session management and context retention
+- 🆕 Context Management: Intelligent conversation context management with sliding window, token limit, and summary strategies
 - 🆕 Function Calling Support: Universal tool calling capability for all models via prompt engineering, compatible with Cherry Studio, Kilo Code, and other clients
 - 🆕 Model Mapping: Flexible model name mapping with wildcard support and preferred provider/account selection
 - 🆕 Custom Parameters: Support for custom HTTP headers to enable web search, thinking mode, and deep research features
@@ -165,17 +165,17 @@ For security, you can enable API Key authentication:
 
 ## 📸 Screenshots
 
-| Dashboard                                      | Providers                                      |
-| ---------------------------------------------- | ---------------------------------------------- |
-| !\[Dashboard]\(docs/screenshots/dashboard.png) | !\[Providers]\(docs/screenshots/providers.png) |
+| Dashboard | Providers |
+|-----------|-----------|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Providers](docs/screenshots/providers.png) |
 
-| Proxy Settings                         | API Keys                                     |
-| -------------------------------------- | -------------------------------------------- |
-| !\[Proxy]\(docs/screenshots/proxy.png) | !\[API Keys]\(docs/screenshots/api-keys.png) |
+| Proxy Settings | API Keys |
+|----------------|----------|
+| ![Proxy](docs/screenshots/proxy.png) | ![API Keys](docs/screenshots/api-keys.png) |
 
-| Models                                   | Session                                    |
-| ---------------------------------------- | ------------------------------------------ |
-| !\[Models]\(docs/screenshots/models.png) | !\[Session]\(docs/screenshots/Session.png) |
+| Models | Session |
+|--------|---------|
+| ![Models](docs/screenshots/models.png) | ![Session](docs/screenshots/Session.png) |
 
 ## ⚙️ Settings
 
